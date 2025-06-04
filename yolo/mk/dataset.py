@@ -5,6 +5,13 @@ import random
 
 
 def index_dataset(path: str, start_index: int):
+    """Re-index the
+
+    Args:
+        path: _description_
+        start_index: _description_
+    """
+    start_index = start_index - 1
     files = os.listdir(path)
     for i, file in enumerate(files):
         if file != "clean":
@@ -13,7 +20,7 @@ def index_dataset(path: str, start_index: int):
 
 
 def load_annotations(file_path: str) -> dict:
-    """_summary_
+    """Load the annotations from coco compatible json file and preprocess them.
 
     Args:
         file_path: path to coco annotation file.
