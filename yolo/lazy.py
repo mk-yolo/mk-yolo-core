@@ -4,12 +4,12 @@ from pathlib import Path
 import hydra
 from lightning import Trainer
 
-project_root = Path(__file__).resolve().parent.parent
-sys.path.append(str(project_root))
-
 from yolo.config.config import Config
 from yolo.tools.solver import InferenceModel, TrainModel, ValidateModel
 from yolo.utils.logging_utils import setup
+
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
 
 
 @hydra.main(config_path="config", config_name="config", version_base=None)
