@@ -101,25 +101,35 @@ class YOLORichProgressBar(RichProgressBar):
 
     @override
     @rank_zero_only
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch: Any, batch_idx: int):
+    def on_train_batch_end(
+        self, trainer, pl_module, outputs, batch: Any, batch_idx: int
+    ):
         self._update(self.train_progress_bar_id, batch_idx + 1)
         self._update_metrics(trainer, pl_module)
         epoch_descript = "[cyan]Train [white]|"
         batch_descript = "[green]Train [white]|"
         metrics = self.get_metrics(trainer, pl_module)
-        metrics.pop("v_num")
+        metrics.pop("v_num", None)
         for metrics_name, metrics_val in metrics.items():
             if "Loss_step" in metrics_name:
-                epoch_descript += f"{metrics_name.removesuffix('_step').split('/')[1]: ^9}|"
+                epoch_descript += (
+                    f"{metrics_name.removesuffix('_step').split('/')[1]: ^9}|"
+                )
                 batch_descript += f"   {metrics_val:2.2f}  |"
 
-        self.progress.update(self.task_epoch, advance=1 / self.total_train_batches, description=epoch_descript)
+        self.progress.update(
+            self.task_epoch,
+            advance=1 / self.total_train_batches,
+            description=epoch_descript,
+        )
         self.progress.update(self.train_progress_bar_id, description=batch_descript)
         self.refresh()
 
     @override
     @rank_zero_only
-    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx) -> None:
+    def on_validation_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx
+    ) -> None:
         if self.is_disabled:
             return
         if trainer.sanity_checking:
@@ -127,8 +137,12 @@ class YOLORichProgressBar(RichProgressBar):
         elif self.val_progress_bar_id is not None:
             self._update(self.val_progress_bar_id, batch_idx + 1)
             _, mAP = outputs
-            mAP_desc = f" mAP :{mAP['map']*100:6.2f} | mAP50 :{mAP['map_50']*100:6.2f} |"
-            self.progress.update(self.val_progress_bar_id, description=f"[green]Valid [white]|{mAP_desc}")
+            mAP_desc = (
+                f" mAP :{mAP['map'] * 100:6.2f} | mAP50 :{mAP['map_50'] * 100:6.2f} |"
+            )
+            self.progress.update(
+                self.val_progress_bar_id, description=f"[green]Valid [white]|{mAP_desc}"
+            )
         self.refresh()
 
     @override
@@ -140,7 +154,9 @@ class YOLORichProgressBar(RichProgressBar):
 
     @override
     @rank_zero_only
-    def on_validation_end(self, trainer: "Trainer", pl_module: "LightningModule") -> None:
+    def on_validation_end(
+        self, trainer: "Trainer", pl_module: "LightningModule"
+    ) -> None:
         if trainer.state.fn == "fit":
             self._update_metrics(trainer, pl_module)
         self.reset_dataloader_idx_tracker()
@@ -153,7 +169,9 @@ class YOLORichProgressBar(RichProgressBar):
         ]
         score = np.array([all_metrics[key] for key in ap_ar_list]) * 100
 
-        self.progress.table, ap_main = make_ap_table(score, self.past_results, self.max_result, trainer.current_epoch)
+        self.progress.table, ap_main = make_ap_table(
+            score, self.past_results, self.max_result, trainer.current_epoch
+        )
         self.max_result = np.maximum(score, self.max_result)
         self.past_results.append((trainer.current_epoch, ap_main))
 
@@ -203,7 +221,12 @@ class YOLORichModelSummary(RichModelSummary):
         console.print(table)
 
         parameters = []
-        for param in [trainable_parameters, total_parameters - trainable_parameters, total_parameters, model_size]:
+        for param in [
+            trainable_parameters,
+            total_parameters - trainable_parameters,
+            total_parameters,
+            model_size,
+        ]:
             parameters.append("{:<{}}".format(get_human_readable_count(int(param)), 10))
 
         grid = Table(header_style=header_style)
@@ -214,15 +237,21 @@ class YOLORichModelSummary(RichModelSummary):
         grid.add_row("[bold]Trainable params[/]", f"{parameters[0]}")
         grid.add_row("[bold]Non-trainable params[/]", f"{parameters[1]}")
         grid.add_row("[bold]Total params[/]", f"{parameters[2]}")
-        grid.add_row("[bold]Total estimated model params size (MB)[/]", f"{parameters[3]}")
-        grid.add_row("[bold]Modules in train mode[/]", f"{total_training_modes['train']}")
+        grid.add_row(
+            "[bold]Total estimated model params size (MB)[/]", f"{parameters[3]}"
+        )
+        grid.add_row(
+            "[bold]Modules in train mode[/]", f"{total_training_modes['train']}"
+        )
         grid.add_row("[bold]Modules in eval mode[/]", f"{total_training_modes['eval']}")
 
         console.print(grid)
 
 
 class ImageLogger(Callback):
-    def on_validation_batch_end(self, trainer: Trainer, pl_module, outputs, batch, batch_idx) -> None:
+    def on_validation_batch_end(
+        self, trainer: Trainer, pl_module, outputs, batch, batch_idx
+    ) -> None:
         if batch_idx != 0:
             return
         batch_size, images, targets, rev_tensor, img_paths = batch
@@ -231,11 +260,15 @@ class ImageLogger(Callback):
         pred_boxes = predicts[0] if isinstance(predicts, list) else predicts
         images = [images[0]]
         step = trainer.current_epoch
-        for logger in trainer.loggers:
-            if isinstance(logger, WandbLogger):
-                logger.log_image("Input Image", images, step=step)
-                logger.log_image("Ground Truth", images, step=step, boxes=[log_bbox(gt_boxes)])
-                logger.log_image("Prediction", images, step=step, boxes=[log_bbox(pred_boxes)])
+        for image_logger in trainer.loggers:
+            if isinstance(image_logger, WandbLogger):
+                image_logger.log_image("Input Image", images, step=step)
+                image_logger.log_image(
+                    "Ground Truth", images, step=step, boxes=[log_bbox(gt_boxes)]
+                )
+                image_logger.log_image(
+                    "Prediction", images, step=step, boxes=[log_bbox(pred_boxes)]
+                )
 
 
 def setup_logger(logger_name, quite=False):
@@ -261,7 +294,9 @@ def setup(cfg: Config):
     setup_logger("lightning.fabric", quite=quite)
     setup_logger("lightning.pytorch", quite=quite)
 
-    def custom_wandb_log(string="", level=int, newline=True, repeat=True, prefix=True, silent=False):
+    def custom_wandb_log(
+        string="", level=int, newline=True, repeat=True, prefix=True, silent=False
+    ):
         if silent:
             return
         for line in string.split("\n"):
@@ -285,7 +320,9 @@ def setup(cfg: Config):
     if cfg.use_tensorboard:
         loggers.append(TensorBoardLogger(log_graph="all", save_dir=save_path))
     if cfg.use_wandb:
-        loggers.append(WandbLogger(project="YOLO", name=cfg.name, save_dir=save_path, id=None))
+        loggers.append(
+            WandbLogger(project="YOLO", name=cfg.name, save_dir=save_path, id=None)
+        )
 
     return progress, loggers, save_path
 
@@ -304,7 +341,10 @@ def log_model_structure(model: Union[ModuleList, YOLOLayer, YOLO]):
 
     for idx, layer in enumerate(model, start=1):
         layer_param = sum(x.numel() for x in layer.parameters())  # number parameters
-        in_channels, out_channels = getattr(layer, "in_c", None), getattr(layer, "out_c", None)
+        in_channels, out_channels = (
+            getattr(layer, "in_c", None),
+            getattr(layer, "out_c", None),
+        )
         if in_channels and out_channels:
             if isinstance(in_channels, (list, ListConfig)):
                 in_channels = "M"
@@ -313,7 +353,9 @@ def log_model_structure(model: Union[ModuleList, YOLOLayer, YOLO]):
             channels = f"{str(in_channels): >4} -> {str(out_channels): >4}"
         else:
             channels = "-"
-        table.add_row(str(idx), layer.layer_type, layer.tags, f"{layer_param:,}", channels)
+        table.add_row(
+            str(idx), layer.layer_type, layer.tags, f"{layer_param:,}", channels
+        )
     console.print(table)
 
 
@@ -342,7 +384,9 @@ def validate_log_directory(cfg: Config, exp_name: str) -> Path:
 
 
 def log_bbox(
-    bboxes: Tensor, class_list: Optional[List[str]] = None, image_size: Tuple[int, int] = (640, 640)
+    bboxes: Tensor,
+    class_list: Optional[List[str]] = None,
+    image_size: Tuple[int, int] = (640, 640),
 ) -> List[dict]:
     """
     Convert bounding boxes tensor to a list of dictionaries for logging, normalized by the image size.
