@@ -3,6 +3,6 @@ train: train
 validation: val
 
 class_num: 1
-class_list: ['mk-result']
+class_list: ['mk-results']
 
 auto_download:
