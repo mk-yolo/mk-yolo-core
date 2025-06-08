@@ -45,6 +45,7 @@ requires = [
 
 [dependency-groups]
 dev = [
+    "kaggle>=1.7.4.5",
     "pre-commit>=2.21.0",
     "pytest>=7.4.4",
     "pytest-cov>=4.1.0",
